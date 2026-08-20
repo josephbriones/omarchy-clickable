@@ -38,6 +38,8 @@ The deterministic demo exercises the same state machine and countdown without se
 
 Open the ClickAble bar control and choose **Arm ClickAble**. The initial move-away guard is intentional: move the pointer once after arming, then settle over the target you want.
 
+The control popup follows Omarchy's keyboard pattern: Tab or arrow keys move between controls, Enter or Space activates one, and Escape or **Close controls** dismisses the popup.
+
 The normal cycle is deliberately short:
 
 1. Move to a target.
@@ -47,7 +49,7 @@ The normal cycle is deliberately short:
 
 Choose the next action before arming. Left stays selected. Right and double are one-shot actions: dwell on the target and ClickAble returns to left after the requested click succeeds. A safety fault also returns to left instead of silently retrying an uncertain action.
 
-Dwell on the ClickAble bar widget while it is armed to pause it. A keyboard, switch, or script can use the same service directly:
+Dwell on the ClickAble bar widget while it is armed to pause it. Left, right, and double dwell modes all take this emergency-stop path before the bar considers opening its controls. A keyboard, switch, or script can use the same service directly:
 
 ```bash
 omarchy-shell clickable toggle

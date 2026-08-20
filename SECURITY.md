@@ -25,7 +25,7 @@ The QML service controls when clicking is allowed. A foreground Python helper ow
 - Non-positional activity detected with a stationary pointer cancels a dwell. Pointer movement beyond the configured tolerance resets it; smaller involuntary motion may preserve progress, but commit remains blocked until the idle signal reports a quiet input interval.
 - Arming, unblocking, and every successful or uncertain click require the pointer to move before another dwell can begin.
 - If a dispatch times out, ClickAble treats its outcome as unknown and pauses. A later explicit Arm starts from a fresh baseline and requires movement. A partial double-click is a fatal session error.
-- Lock, desktop-scene changes, helper exit, malformed protocol data, output loss, and stale state pause or fault the session rather than clicking.
+- Lock and relevant desktop-scene changes suspend the countdown and require fresh movement. Stale-epoch output is ignored; helper exit, malformed current-session protocol data, and output loss pause or fault the session rather than clicking.
 
 ## Compositor dependency
 

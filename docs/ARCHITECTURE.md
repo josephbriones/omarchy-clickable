@@ -32,7 +32,7 @@ paused
                                       └─ sufficient movement → tracking
 ```
 
-Lock and workspace, toplevel, fullscreen, layer, layout, or output changes force `suspended`. Clearing a guard never resumes directly into a dwell; it returns through `require_move`. A fatal helper or protocol problem enters `faulted`. Stop enters `stopped`. Suspend/resume safety depends on Omarchy establishing the session lock and remains an explicit real-desktop acceptance gate.
+Lock and workspace, toplevel, fullscreen, layer, layout, or output changes force `suspended`. Toplevel focus uses Hyprland's stable `activewindowv2` address: a new address guards the scene, while ambiguous title events and repeated events for the same address are ignored. Clearing a guard never resumes directly into a dwell; it returns through `require_move`. A fatal helper or protocol problem enters `faulted`. Stop enters `stopped`. Suspend/resume safety depends on Omarchy establishing the session lock and remains an explicit real-desktop acceptance gate.
 
 The initial `require_move` state matters. If the user arms ClickAble by clicking its bar control and leaves the pointer there, ClickAble must not immediately click that same control again.
 

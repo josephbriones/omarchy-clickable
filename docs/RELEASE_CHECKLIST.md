@@ -13,7 +13,7 @@
 - [ ] Enabling, login, shell restart, and plugin reload all begin paused.
 - [ ] Paused state makes no pointer or lock request and cannot click.
 - [ ] Disable, removal, helper kill, hot reload, and shell exit leave no helper process.
-- [ ] Lock, suspend, and scene transitions cancel a countdown before any dispatch.
+- [ ] Lock, suspend, and relevant scene transitions cancel a countdown before any dispatch; a changed `activewindowv2` address requires fresh movement, while title-only events for the same address do not restart the guard.
 - [ ] Stale events from a previous epoch never change the current service.
 
 ## Input behavior
@@ -23,7 +23,7 @@
 - [ ] Left, one-shot right, and one-shot double produce the exact expected events.
 - [ ] Uncertain and partial outcomes fail closed and require movement.
 - [ ] Post-click rearm prevents repeated clicks at one resting target.
-- [ ] The bar widget can be used by dwell to pause the service.
+- [ ] In Left, Right once, and Double once modes, the first accepted armed-bar activation pauses before popup- or button-specific behavior.
 - [ ] 1,000 dwell cycles produce no duplicate click, click storm, wrong target, stuck button, helper leak, or unbounded memory growth.
 
 ## Surfaces and displays
@@ -35,8 +35,8 @@
 
 ## Accessibility
 
-- [ ] Every control is keyboard reachable with visible focus.
-- [ ] Every popup control is at least 44×44 logical pixels; the bar trigger follows Omarchy's configured bar thickness and remains at least 24 logical pixels on its shorter axis.
+- [ ] Every control is keyboard reachable with visible focus; Escape and the explicit Close controls button both dismiss the popup.
+- [ ] Every popup control is at least 44×44 logical pixels; the bar trigger keeps one axis at least 44 logical pixels, and the configured Omarchy bar thickness keeps its shorter axis at least 24 logical pixels.
 - [ ] Orca announces state, buttons, one-shot selection, settings, errors, and the armed/paused transition.
 - [ ] A single-key or switch binding can Arm/Pause without a chord.
 - [ ] Reduced-motion behavior is acceptable and the countdown remains understandable without color alone.

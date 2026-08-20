@@ -16,7 +16,7 @@ The suite includes:
 - stale epoch rejection, malformed protocol failure, command rate limits, broken stdout, EOF, and signal cancellation;
 - launcher-to-worker parent identity and Linux shell-death cleanup;
 - deterministic demo behavior with no compositor click;
-- strict QML event parsing, legal transitions, lock/activity guards, input-transparent indicators, accessible controls, and IPC contracts;
+- strict QML event parsing, legal transitions, de-duplicated focus and lock/activity guards, input-transparent indicators, accessible controls, and IPC contracts;
 - manifest, documentation, executable-mode, privacy, and release metadata checks.
 
 GitHub Actions runs the portable suite on Python 3.12 and 3.14. A separate Arch job checks the official Omarchy validator and `qmllint` against a pinned current Omarchy tree.
@@ -47,10 +47,11 @@ Use disposable targets and no sensitive or destructive application state. The re
 - countdown cancels on beyond-tolerance pointer movement and on keyboard or manual-button input with the pointer held stationary; in-tolerance motion never commits until input is quiet, and coincident device input plus tracker jitter is tested as a documented calibration edge;
 - the bar widget, its popup, an Omarchy layer-shell surface, native GTK, native Qt/Quickshell, a terminal, Chromium Wayland, Electron Wayland, and XWayland receive the correct click;
 - mixed 100%, 125%, 150%, and 200% scale, negative output origins, rotated/flipped outputs, vertical layouts, and hotplug place the ring on the real pointer;
-- lock at the last countdown frame, workspace/toplevel changes, fullscreen transitions, suspend/resume, helper kill, plugin disable, hot reload, and shell exit produce no unintended click;
+- lock at the last countdown frame, workspace/toplevel changes, fullscreen transitions, suspend/resume, helper kill, plugin disable, hot reload, and shell exit produce no unintended click; a real toplevel address change requires fresh movement, while title-only updates in the same toplevel do not restart the guard;
 - after an uncertain dispatch, no new dwell begins until the pointer moves away;
 - 1,000 dwell cycles produce no duplicate click, click storm, wrong target, stuck button, or unbounded process/memory growth;
-- all popup controls are keyboard reachable, visibly focused, at least 44×44 logical pixels, and announced meaningfully by Orca; the bar trigger follows Omarchy's configured bar thickness and remains at least 24 logical pixels on its shorter axis;
+- Left, Right once, and Double once all pause on the first accepted armed-bar activation before popup-specific behavior;
+- all popup controls are keyboard reachable, visibly focused, at least 44×44 logical pixels, announced meaningfully by Orca, and dismissible with Escape or the Close controls button; the bar trigger keeps one axis at least 44 logical pixels and uses Omarchy's configured bar thickness on its shorter axis, which must be at least 24 logical pixels for release;
 - the ring and invisible overlay never steal pointer or keyboard focus.
 
 ## Release evidence
