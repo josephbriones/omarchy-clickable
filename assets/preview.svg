@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="desktop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1118"/>
+      <stop offset="1" stop-color="#20293a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#7aa2f7"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#000" flood-opacity=".5"/>
+    </filter>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#desktop)"/>
+  <circle cx="210" cy="760" r="330" fill="#5eead4" opacity=".05"/>
+  <circle cx="1460" cy="170" r="380" fill="#7aa2f7" opacity=".06"/>
+
+  <rect x="0" y="0" width="1600" height="52" fill="#090c12" opacity=".97"/>
+  <text x="30" y="34" font-family="Inter, sans-serif" font-size="17" font-weight="700" fill="#e6edf7">Omarchy</text>
+  <text x="770" y="33" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#8e9aab">Workspace 2</text>
+  <g transform="translate(1516 6)">
+    <rect width="44" height="40" rx="11" fill="#48252c" stroke="#f7768e" stroke-width="1.5"/>
+    <text x="22" y="27" text-anchor="middle" font-family="Inter, sans-serif" font-size="17" font-weight="750" fill="#ffd8df">C</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="82" y="104" width="1064" height="702" rx="20" fill="#111721" stroke="#3b485d" stroke-width="2"/>
+    <rect x="82" y="104" width="1064" height="58" rx="20" fill="#171f2c"/>
+    <rect x="82" y="140" width="1064" height="22" fill="#171f2c"/>
+    <circle cx="113" cy="133" r="7" fill="#f7768e"/>
+    <circle cx="138" cy="133" r="7" fill="#e0af68"/>
+    <circle cx="163" cy="133" r="7" fill="#9ece6a"/>
+    <rect x="210" y="118" width="620" height="31" rx="9" fill="#0d121a"/>
+    <text x="234" y="139" font-family="Inter, sans-serif" font-size="13" fill="#7f8b9d">appointments.example</text>
+
+    <rect x="124" y="200" width="980" height="548" rx="14" fill="#f7f9fc"/>
+    <text x="176" y="265" font-family="Inter, sans-serif" font-size="16" font-weight="700" fill="#64748b">YOUR APPOINTMENT</text>
+    <text x="176" y="324" font-family="Inter, sans-serif" font-size="35" font-weight="750" fill="#182235">Confirm Thursday at 10:30</text>
+    <text x="176" y="370" font-family="Inter, sans-serif" font-size="18" fill="#5c687a">Review the details, then confirm when you are ready.</text>
+
+    <rect x="176" y="429" width="410" height="112" rx="14" fill="#eef2f7" stroke="#d0d8e4"/>
+    <text x="204" y="469" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#667085">LOCATION</text>
+    <text x="204" y="510" font-family="Inter, sans-serif" font-size="20" fill="#1f2937">Video appointment</text>
+
+    <rect x="176" y="650" width="154" height="56" rx="12" fill="#e8edf4" stroke="#c7d0dd"/>
+    <text x="253" y="685" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="650" fill="#334155">Go back</text>
+    <rect x="868" y="650" width="184" height="56" rx="12" fill="url(#accent)"/>
+    <text x="960" y="685" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="750" fill="#0b1821">Confirm</text>
+  </g>
+
+  <g transform="translate(960 678)" filter="url(#glow)">
+    <circle r="52" fill="none" stroke="#17212f" stroke-width="12" opacity=".9"/>
+    <path d="M 0,-52 A 52,52 0 1 1 -49.45,16.07" fill="none" stroke="#5eead4" stroke-width="12" stroke-linecap="round"/>
+    <circle r="29" fill="#0e1722" opacity=".94" stroke="#a8fff2" stroke-width="2"/>
+    <path d="M -5,-15 L 17,9 L 6,11 L 13,27 L 3,31 L -4,14 L -13,22 Z" fill="#f7fbff" stroke="#0c1119" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1194" y="80" width="356" height="650" rx="22" fill="#111823" stroke="#506077" stroke-width="2"/>
+    <text x="1230" y="128" font-family="Inter, sans-serif" font-size="25" font-weight="750" fill="#eef5ff">ClickAble</text>
+    <text x="1230" y="158" font-family="Inter, sans-serif" font-size="14" fill="#93a1b4">Ready · 0.9 second dwell</text>
+
+    <rect x="1226" y="180" width="292" height="52" rx="12" fill="#48252c" stroke="#f7768e" stroke-width="2"/>
+    <text x="1372" y="213" text-anchor="middle" font-family="Inter, sans-serif" font-size="16" font-weight="750" fill="#ffd8df">Pause dwell clicking</text>
+    <text x="1228" y="257" font-family="Inter, sans-serif" font-size="13" fill="#93a1b4">Move the pointer to rearm. Hold still only</text>
+    <text x="1228" y="276" font-family="Inter, sans-serif" font-size="13" fill="#93a1b4">when the target is correct.</text>
+
+    <text x="1228" y="313" font-family="Inter, sans-serif" font-size="13" font-weight="700" letter-spacing="1.1" fill="#748299">NEXT CLICK</text>
+    <g transform="translate(1226 328)">
+      <rect width="88" height="48" rx="11" fill="#23453f" stroke="#5eead4"/>
+      <text x="44" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="15" font-weight="700" fill="#c9fff6">Left</text>
+      <rect x="98" width="88" height="48" rx="11" fill="#1d2633" stroke="#405067"/>
+      <text x="142" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#d8e1ed">Right once</text>
+      <rect x="196" width="96" height="48" rx="11" fill="#1d2633" stroke="#405067"/>
+      <text x="244" y="30" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#d8e1ed">Double once</text>
+    </g>
+    <text x="1228" y="399" font-family="Inter, sans-serif" font-size="12" fill="#7f8da1">Choose before arming · Right and double are one-shot</text>
+
+    <text x="1228" y="441" font-family="Inter, sans-serif" font-size="13" font-weight="700" letter-spacing="1.1" fill="#748299">DWELL DELAY</text>
+    <g transform="translate(1226 456)">
+      <rect width="66" height="44" rx="10" fill="#1d2633" stroke="#405067"/>
+      <text x="33" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#d8e1ed">0.6 s</text>
+      <rect x="75" width="66" height="44" rx="10" fill="#23453f" stroke="#5eead4"/>
+      <text x="108" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#c9fff6">0.9 s</text>
+      <rect x="150" width="66" height="44" rx="10" fill="#1d2633" stroke="#405067"/>
+      <text x="183" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#d8e1ed">1.2 s</text>
+      <rect x="225" width="67" height="44" rx="10" fill="#1d2633" stroke="#405067"/>
+      <text x="258.5" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#d8e1ed">1.6 s</text>
+    </g>
+
+    <text x="1228" y="542" font-family="Inter, sans-serif" font-size="13" font-weight="700" letter-spacing="1.1" fill="#748299">STEADINESS RADIUS</text>
+    <g transform="translate(1226 557)">
+      <rect width="88" height="44" rx="10" fill="#1d2633" stroke="#405067"/>
+      <text x="44" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#d8e1ed">6 px</text>
+      <rect x="98" width="88" height="44" rx="10" fill="#23453f" stroke="#5eead4"/>
+      <text x="142" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#c9fff6">12 px</text>
+      <rect x="196" width="96" height="44" rx="10" fill="#1d2633" stroke="#405067"/>
+      <text x="244" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#d8e1ed">20 px</text>
+    </g>
+
+    <text x="1372" y="638" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#7f8da1">One visible countdown · one confirmed click</text>
+    <text x="1372" y="658" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#7f8da1">Move away before another dwell can begin</text>
+  </g>
+
+  <g transform="translate(82 835)">
+    <circle cx="8" cy="8" r="7" fill="#5eead4"/>
+    <text x="27" y="14" font-family="Inter, sans-serif" font-size="15" fill="#b5c0cf">Move pointer → hold steady → visible countdown → one click → move to rearm</text>
+  </g>
+</svg>

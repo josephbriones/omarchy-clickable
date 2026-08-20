@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.josephbriones.clickable",
+  "name": "ClickAble",
+  "version": "0.1.0",
+  "author": "Joseph Briones",
+  "license": "MIT",
+  "description": "Click by dwelling, with deliberate arming and a visible countdown.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "ClickAble",
+    "description": "Arm dwell clicking and choose its deliberate click action",
+    "category": "Accessibility",
+    "allowMultiple": false
+  }
+}

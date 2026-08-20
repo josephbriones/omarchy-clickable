@@ -1,0 +1,68 @@
+name: Bug report
+description: Report a reproducible ClickAble problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping make dwell clicking safer. Do not include private screen content or sensitive logs.
+  - type: input
+    id: version
+    attributes:
+      label: ClickAble version or commit
+      placeholder: 0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: omarchy
+    attributes:
+      label: Omarchy and Hyprland versions
+      placeholder: Include both versions
+    validations:
+      required: true
+  - type: dropdown
+    id: action
+    attributes:
+      label: Click action
+      options:
+        - Left click
+        - One-shot right click
+        - One-shot double click
+        - Arm or pause
+        - Countdown indicator
+        - Demo only
+    validations:
+      required: true
+  - type: textarea
+    id: display
+    attributes:
+      label: Display and input setup
+      description: List output arrangement, scaling, rotation, and the pointer device or assistive input source.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: What did you do, what target was under the pointer, and what happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: state
+    attributes:
+      label: Safe diagnostic state
+      description: If possible, include the JSON returned by the ClickAble state IPC command. Remove anything you do not want to share.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I confirmed whether the problem also occurs in the deterministic demo.
+        - label: I paused ClickAble after reproducing an unintended or uncertain click.

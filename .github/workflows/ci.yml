@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-validation:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Validate
+        run: bash scripts/validate.sh
+
+  omarchy-contract:
+    name: Omarchy QML contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container: archlinux:latest
+    steps:
+      - name: Install the current Arch QML toolchain
+        run: pacman -Syu --noconfirm git jq quickshell qt6-declarative
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: plugin
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: basecamp/omarchy
+          ref: 945549699026df6c888a6b1bd4e06fbf55a67595
+          path: omarchy
+      - name: Validate manifest and QML imports
+        working-directory: plugin
+        env:
+          OMARCHY_PATH: ${{ github.workspace }}/omarchy
+        run: |
+          "$OMARCHY_PATH/bin/omarchy-plugin-validate" .
+          mkdir -p "$RUNNER_TEMP/clickable-qml"
+          ln -s "$OMARCHY_PATH/shell" "$RUNNER_TEMP/clickable-qml/qs"
+          /usr/lib/qt6/bin/qmllint -I "$RUNNER_TEMP/clickable-qml" Service.qml BarWidget.qml
