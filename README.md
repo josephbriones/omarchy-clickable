@@ -4,6 +4,8 @@ If you can point, you should be able to click.
 
 ClickAble turns a deliberate pointer pause into a click. It is built for people who can position a pointer with an eye tracker, head tracker, trackball, mouse, or other device but cannot press a button reliably or comfortably.
 
+> **Release status:** This branch is a release candidate, not a production-approved release. Portable validation is green, but the exact published commit must pass the real-desktop checklist on recorded Omarchy and Hyprland versions before production use or marketplace submission.
+
 Arm it once with an accessible key, external switch, keyboard navigation, or a conventional click. After that, the pointer can click and can dwell on the ClickAble bar widget to Pause. Users who cannot produce any conventional click need the [single-key or switch setup](docs/SETUP.md#recommended-single-key-or-switch-control) before ClickAble can be their click path.
 
 Move to a target. Hold still. A ring shows the countdown. ClickAble clicks once, then waits for you to move away before it can click again.
@@ -16,7 +18,7 @@ Move to a target. Hold still. A ring shows the countdown. ClickAble clicks once,
 - Offers one-shot right and double clicks, then returns to left click.
 - Cancels non-positional activity detected while the pointer is stationary and pointer movement beyond the selected tolerance; small involuntary motion can preserve progress, but a click still waits for a quiet input interval.
 - Requires movement after arming and after every click, preventing click loops at a resting pointer.
-- Blocks clicks while Omarchy is locked or the desktop scene is changing.
+- Suspends on observed Omarchy lock and desktop-scene changes and performs an immediate lock-state preflight before every dwell action.
 - Pauses on helper, protocol, or uncertain click failures.
 - Shows one unmistakable armed/paused state in the Omarchy bar.
 - Works without administrator privileges, virtual input devices, a background daemon, or Hyprland configuration changes.
@@ -67,7 +69,7 @@ These commands make it practical to bind Arm/Pause to one accessible key or exte
 
 ClickAble is a dwell clicker, not a replacement input stack.
 
-- No drag, scroll, hover menu, target snapping, or on-screen keyboard in v1.
+- No drag, scroll, hover menu, target snapping, or on-screen keyboard in the 0.1 candidate.
 - No continuous desktop capture, accessibility-tree inspection, key logging, or text collection.
 - No kernel input injection, device rule, elevated service, native Hyprland extension, or automatic configuration edit.
 - No automatic arming, hidden autostart state, analytics, account, or network request.
@@ -82,9 +84,11 @@ Only bounded presentation preferences are retained. ClickAble creates no click h
 
 ## Compatibility and limits
 
-ClickAble targets current Omarchy Quattro and its pinned Hyprland integration. The click is delivered to the Wayland surface currently under the real pointer. Native Wayland and XWayland behavior must be verified on the target Omarchy release because compositor input semantics can change.
+ClickAble targets current Omarchy Quattro and its Hyprland integration. The click is delivered to the Wayland surface currently under the real pointer. Native Wayland and XWayland behavior must be verified on the exact recorded target versions because compositor input semantics can change.
 
-Some protected surfaces or applications may reject synthetic clicks. Double click is two bounded atomic clicks; if the second dispatch cannot be confirmed, ClickAble fails closed and requires movement before another attempt. Do not rely on ClickAble as the only control for a safety-critical operation.
+Lock protection is a best-effort immediate preflight, not an atomic compositor guarantee. The worker checks `j/locked` and then sends the fixed click in a separate local socket request. A lock transition can begin after the unlocked response and before Hyprland receives the dispatch; the shell guard and final pending-input check narrow that residual interval but cannot eliminate it. Acceptance on the exact recorded Omarchy and Hyprland versions must exercise this transition repeatedly, and ClickAble must not be the only safeguard for sensitive or safety-critical input.
+
+Some protected surfaces or applications may reject synthetic clicks. Double click uses one lock preflight followed by two bounded, complete press/release click requests. A lock can begin before or between those requests; if the second dispatch cannot be confirmed, ClickAble fails closed and requires movement before another attempt. Do not rely on ClickAble as the only control for a safety-critical operation.
 
 Omarchy's idle signal reports activity, not which device caused it. ClickAble infers stationary activity as a key or manual button and cancels the dwell. If that input coincides with small pointer jitter, it can be treated as tolerated pointer motion instead; dispatch still remains blocked until the input stream is quiet. This tradeoff needs calibration with the user's actual pointer source.
 

@@ -240,6 +240,83 @@ if [[ ! -t 0 ]]; then
   exit 3
 fi
 
+for command_name in git omarchy-version pacman hyprctl; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    printf 'FAIL: %s is required to record the real acceptance target\n' "$command_name" >&2
+    exit 1
+  fi
+done
+
+plugin_id=$(python3 - "$ROOT/manifest.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as manifest_file:
+    manifest = json.load(manifest_file)
+plugin_id = manifest.get("id")
+if not isinstance(plugin_id, str) or not plugin_id:
+    raise SystemExit(1)
+print(plugin_id)
+PY
+) || {
+  printf '%s\n' 'FAIL: manifest.json does not contain a valid plugin id' >&2
+  exit 1
+}
+
+installed_root="$HOME/.config/omarchy/plugins/$plugin_id"
+if [[ ! -d $installed_root/.git ]]; then
+  printf 'FAIL: the running plugin must come from the git-managed Omarchy install at %s\n' "$installed_root" >&2
+  exit 1
+fi
+
+if ! candidate_root=$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null) \
+    || ! candidate_sha=$(git -C "$ROOT" rev-parse --verify HEAD 2>/dev/null) \
+    || ! installed_sha=$(git -C "$installed_root" rev-parse --verify HEAD 2>/dev/null); then
+  printf '%s\n' 'FAIL: real acceptance requires valid candidate and installed Git checkouts' >&2
+  exit 1
+fi
+candidate_root=$(cd "$candidate_root" && pwd -P)
+root_physical=$(cd "$ROOT" && pwd -P)
+if [[ $candidate_root != "$root_physical" ]]; then
+  printf '%s\n' 'FAIL: run the acceptance script from the root of the standalone ClickAble checkout' >&2
+  exit 1
+fi
+if [[ -n $(git -C "$ROOT" status --porcelain --untracked-files=all) \
+      || -n $(git -C "$installed_root" status --porcelain --untracked-files=all) ]]; then
+  printf '%s\n' 'FAIL: candidate and installed ClickAble checkouts must both be clean' >&2
+  exit 1
+fi
+if [[ $candidate_sha != "$installed_sha" ]]; then
+  printf 'FAIL: installed ClickAble commit %s does not match candidate %s\n' "$installed_sha" "$candidate_sha" >&2
+  exit 1
+fi
+
+omarchy-shell shell rescanPlugins >/dev/null
+wait_for_ping || {
+  printf '%s\n' 'FAIL: ClickAble did not reload from the verified installed commit' >&2
+  exit 1
+}
+pause_and_verify
+
+if ! omarchy_release=$(omarchy-version 2>&1) || [[ ! $omarchy_release =~ [^[:space:]] ]]; then
+  printf '%s\n' 'FAIL: omarchy-version did not return a version' >&2
+  exit 1
+fi
+if ! hyprland_package=$(pacman -Q hyprland 2>&1) || [[ ! $hyprland_package =~ [^[:space:]] ]]; then
+  printf '%s\n' 'FAIL: pacman could not record the installed Hyprland package' >&2
+  exit 1
+fi
+if ! hyprland_runtime=$(hyprctl version 2>&1) || [[ ! $hyprland_runtime =~ [^[:space:]] ]]; then
+  printf '%s\n' 'FAIL: hyprctl could not record the running Hyprland version' >&2
+  exit 1
+fi
+
+printf '%s\n' '==> Exact real-acceptance target'
+printf 'ClickAble commit: %s\n' "$candidate_sha"
+printf 'Omarchy: %s\n' "$omarchy_release"
+printf '%s\n' "$hyprland_package"
+printf '%s\n' "$hyprland_runtime"
+
 run_real_action() {
   local action=$1 answer result
 

@@ -18,7 +18,7 @@ QML decides whether ClickAble is allowed to operate. The worker decides whether 
 
 QML never sends a raw `sample` or `click` command. It sends policy facts: configuration, resume, pause, activity, guards, and the requested fixed action. The worker polls the cursor only while the armed state machine needs it and emits bounded frames for the visual ring.
 
-This avoids a check-to-click race where a QML timer could verify one pointer position and dispatch after the pointer or lock state changed.
+This removes the larger QML-timer gap between the final pointer sample and worker dispatch, and it narrows the lock-check interval. It does not make the separate Hyprland lock query and click dispatch atomic.
 
 ## States
 
@@ -32,7 +32,7 @@ paused
                                       └─ sufficient movement → tracking
 ```
 
-Lock and workspace, toplevel, fullscreen, layer, layout, or output changes force `suspended`. Toplevel focus uses Hyprland's stable `activewindowv2` address: a new address guards the scene, while ambiguous title events and repeated events for the same address are ignored. Clearing a guard never resumes directly into a dwell; it returns through `require_move`. A fatal helper or protocol problem enters `faulted`. Stop enters `stopped`. Suspend/resume safety depends on Omarchy establishing the session lock and remains an explicit real-desktop acceptance gate.
+Observed lock and workspace, toplevel, fullscreen, layer, layout, or output changes force `suspended`. Toplevel focus uses Hyprland's stable `activewindowv2` address: a new address guards the scene, while ambiguous title events and repeated events for the same address are ignored. Clearing a guard never resumes directly into a dwell; it returns through `require_move`. A fatal helper or protocol problem enters `faulted`. Stop enters `stopped`. Suspend/resume behavior depends on Omarchy establishing and reporting the session lock and remains an explicit real-desktop acceptance gate.
 
 The initial `require_move` state matters. If the user arms ClickAble by clicking its bar control and leaves the pointer there, ClickAble must not immediately click that same control again.
 
@@ -42,7 +42,7 @@ Each helper launch receives a new positive epoch. Every command and event carrie
 
 ## Hyprland boundary
 
-The worker opens one short-lived AF_UNIX connection for each bounded request to the current user's Hyprland socket. The path is derived only from validated `XDG_RUNTIME_DIR` and `HYPRLAND_INSTANCE_SIGNATURE` values.
+The worker opens one short-lived AF_UNIX connection for each bounded request to the current user's Hyprland socket. One monotonic 500 ms deadline covers connect, send, and the complete EOF-terminated reply; cancellation is checked between fragments. The worker rejects replies over 16 KiB and treats a timeout before EOF as an incomplete response. The path is derived only from validated `XDG_RUNTIME_DIR` and `HYPRLAND_INSTANCE_SIGNATURE` values.
 
 The safety-critical sequence is:
 
@@ -54,6 +54,8 @@ The safety-critical sequence is:
 6. On confirmed success, enter `rearming`; on an uncertain or partial outcome, pause the session.
 
 Targetless dispatch is intentional. On the supported Hyprland contract it preserves the compositor's real pointer-focus surface; supplying a window target would retarget the event and could move pointer focus to the wrong local coordinate.
+
+Steps 3 and 5 use different socket requests. A lock transition can begin after step 3 reports unlocked and before step 5 reaches the compositor. For a double click, one preflight covers the dwell action and a lock can also begin between its two complete click requests. The QML lock guard and worker's final pending-input check narrow this residual transition race, but the current userspace API cannot eliminate it or retract a dispatched click. The lock check is therefore a best-effort immediate preflight. Real acceptance on exact recorded Omarchy and Hyprland versions is required before this release candidate can be used in production or submitted.
 
 All dispatcher strings are constants. Neither coordinates, settings, QML text, nor application data are interpolated into them.
 

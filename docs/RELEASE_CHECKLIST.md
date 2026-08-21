@@ -1,5 +1,7 @@
 # Release checklist
 
+> **Current status:** Release candidate only. No production release or marketplace submission is approved until the exact commit passes this checklist on exact recorded Omarchy and Hyprland versions and the owner accepts the documented lock-transition race.
+
 ## Automated
 
 - [ ] `bash scripts/validate.sh` passes from a clean checkout.
@@ -13,7 +15,8 @@
 - [ ] Enabling, login, shell restart, and plugin reload all begin paused.
 - [ ] Paused state makes no pointer or lock request and cannot click.
 - [ ] Disable, removal, helper kill, hot reload, and shell exit leave no helper process.
-- [ ] Lock, suspend, and relevant scene transitions cancel a countdown before any dispatch; a changed `activewindowv2` address requires fresh movement, while title-only events for the same address do not restart the guard.
+- [ ] Observed lock, suspend, and relevant scene transitions cancel a countdown before any dispatch; a changed `activewindowv2` address requires fresh movement, while title-only events for the same address do not restart the guard.
+- [ ] Repeated lock-transition testing is recorded immediately before a single click and before and between both halves of a double click; the acceptance record states that the separate lock query and click dispatch leave a residual non-atomic race.
 - [ ] Stale events from a previous epoch never change the current service.
 
 ## Input behavior
@@ -45,6 +48,8 @@
 
 - [ ] README, preview, privacy, security, setup, testing, changelog, and manifest match the exact behavior.
 - [ ] Public install URL works from a clean current Omarchy system.
+- [ ] The acceptance runner verifies a clean candidate checkout and the installed plugin share the recorded full Git commit, reloads that installed source, and includes the commit, `omarchy-version`, `pacman -Q hyprland`, and `hyprctl version` output.
 - [ ] GitHub Actions passes on the public commit.
 - [ ] Marketplace submission text and preview contain no private or machine-specific data.
+- [ ] The owner accepts the documented lock-transition residual risk for the recorded release candidate.
 - [ ] The repository owner approves the final marketplace submission.

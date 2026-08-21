@@ -1,6 +1,6 @@
 # Testing
 
-ClickAble's portable suite proves protocol, state-machine, parser, timeout, rate-limit, process, and repository invariants without moving the developer's pointer or dispatching a real click.
+ClickAble's portable suite proves protocol, state-machine, parser, timeout, rate-limit, process, and repository invariants without moving the developer's pointer or dispatching a real click. This branch remains a release candidate until the exact commit also passes real acceptance on exact recorded Omarchy and Hyprland versions.
 
 ## Portable validation
 
@@ -11,7 +11,7 @@ bash scripts/validate.sh
 The suite includes:
 
 - exact cursor and lock-response parsing, including duplicate keys, booleans, floats, oversized values, and malformed JSON;
-- fixed targetless left/right/double dispatcher requests and bounded Unix-socket behavior;
+- fixed targetless left/right/double dispatcher requests and bounded Unix-socket behavior, including fragmented replies, oversized streams, empty EOF, send failures, cancellation between fragments, and one absolute deadline across the request;
 - paused startup, initial move-away, dwell cancellation, tolerance boundaries, click uncertainty, one-shot actions, and post-click rearm;
 - stale epoch rejection, malformed protocol failure, command rate limits, broken stdout, EOF, and signal cancellation;
 - launcher-to-worker parent identity and Linux shell-death cleanup;
@@ -44,6 +44,7 @@ Use disposable targets and no sensitive or destructive application state. The re
 - one left-button press/release reaches the exact target under the pointer with keyboard focus in a different window;
 - one right-button press/release reaches the exact target and the mode returns to left only after success;
 - double click produces exactly two bounded left clicks and no stuck button;
+- repeated lock transitions are exercised before a double click and between its two complete click requests, with the residual outcome recorded rather than represented as atomic exclusion;
 - countdown cancels on beyond-tolerance pointer movement and on keyboard or manual-button input with the pointer held stationary; in-tolerance motion never commits until input is quiet, and coincident device input plus tracker jitter is tested as a documented calibration edge;
 - the bar widget, its popup, an Omarchy layer-shell surface, native GTK, native Qt/Quickshell, a terminal, Chromium Wayland, Electron Wayland, and XWayland receive the correct click;
 - mixed 100%, 125%, 150%, and 200% scale, negative output origins, rotated/flipped outputs, vertical layouts, and hotplug place the ring on the real pointer;
@@ -54,6 +55,8 @@ Use disposable targets and no sensitive or destructive application state. The re
 - all popup controls are keyboard reachable, visibly focused, at least 44×44 logical pixels, announced meaningfully by Orca, and dismissible with Escape or the Close controls button; the bar trigger keeps one axis at least 44 logical pixels and uses Omarchy's configured bar thickness on its shorter axis, which must be at least 24 logical pixels for release;
 - the ring and invisible overlay never steal pointer or keyboard focus.
 
+The lock-transition exercise is evidence, not proof of atomic exclusion. `j/locked` and the click dispatcher are separate requests, so a lock can begin in between them. The acceptance record must acknowledge this residual race; neither portable tests nor a successful stress run may be represented as a hard guarantee that no transition-time click can occur.
+
 ## Release evidence
 
-Portable green tests are necessary but do not prove compositor delivery. The release checklist remains unchecked until the exact published commit passes current Omarchy hardware acceptance. Do not replace missing evidence with an assumption.
+Portable green tests are necessary but do not prove compositor delivery or remove the lock-transition race. The release checklist remains unchecked until the exact published commit passes hardware acceptance on the recorded Omarchy and Hyprland versions and the owner accepts the documented residual risk. Until then this branch is a release candidate, not approved for production use or marketplace submission. Do not replace missing evidence with an assumption.
