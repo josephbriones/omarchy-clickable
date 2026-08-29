@@ -20,6 +20,8 @@ The QML service controls when clicking is allowed. A foreground Python helper ow
 - Every command and event carries the current positive session epoch. Stale output cannot commit a click in a new session.
 - Commands and JSON events use exact schemas, unique keys, bounded lines, bounded rates, finite coordinate ranges, and legal state transitions.
 - Hyprland request strings are fixed constants. User-controlled text is never interpolated into a compositor request or shell command.
+- Persistent settings cross a separate, argument-vector-only helper. It walks real directories through `O_NOFOLLOW` directory descriptors, requires the final directory to be user-owned mode `0700`, and accepts only a user-owned regular file. File type, owner, and the 1 KiB limit are checked before a nonblocking bounded read; writes use a private same-directory temporary file, `fsync`, and descriptor-relative atomic replacement.
+- A symlink, FIFO, device, oversized file, ownership mismatch, non-private directory, or persistence-helper failure disables persistence for that shell load. ClickAble continues with safe in-memory defaults and never arms as a side effect of loading settings.
 - The runtime path and Hyprland instance signature are validated before opening the local Unix socket.
 - A click is requested only after a fresh pointer sample, a movement-tolerance check, an immediate best-effort lock-state preflight, and a final check for pending QML guard input.
 - Non-positional activity detected with a stationary pointer cancels a dwell. Pointer movement beyond the configured tolerance resets it; smaller involuntary motion may preserve progress, but commit remains blocked until the idle signal reports a quiet input interval.

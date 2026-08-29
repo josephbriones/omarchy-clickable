@@ -21,27 +21,23 @@ Item {
     ? String(manifest.__sourceDir)
     : ""
   readonly property string backendPath: sourceDir + "/bin/clickable"
+  readonly property string settingsHelperPath: sourceDir + "/bin/clickable-settings"
   readonly property string shellProcessId: String(Quickshell.processId)
 
   readonly property string configHome: Quickshell.env("XDG_CONFIG_HOME") !== ""
     ? Quickshell.env("XDG_CONFIG_HOME")
     : (Quickshell.env("HOME") !== "" ? Quickshell.env("HOME") + "/.config" : "")
-  readonly property string settingsDirectory: configHome === ""
-    ? ""
-    : configHome + "/omarchy/clickable"
-  readonly property string settingsPath: settingsDirectory === ""
-    ? ""
-    : settingsDirectory + "/config.json"
-
   property int dwellMs: ClickAbleModel.DEFAULT_DWELL_MS
   property int tolerancePx: ClickAbleModel.DEFAULT_TOLERANCE_PX
   readonly property var dwellChoices: ClickAbleModel.DWELL_CHOICES
   readonly property var toleranceChoices: ClickAbleModel.TOLERANCE_CHOICES
 
   property bool settingsLoaded: false
+  property bool settingsComponentReady: false
   property bool settingsHydrating: false
-  property bool settingsDirectoryReady: false
-  property bool settingsDirectoryStartPending: false
+  property bool settingsPersistenceReady: false
+  property bool settingsReadStartPending: false
+  property bool settingsSaveStartPending: false
   property bool settingsDirty: false
 
   // Deliberate session state is never persistent. Every shell load is paused.
@@ -255,6 +251,7 @@ Item {
   }
 
   function setDwellMs(value) {
+    if (!settingsLoaded) return
     var next = ClickAbleModel.boundedDwell(Number(value))
     if (next === dwellMs) return
     dwellMs = next
@@ -266,6 +263,7 @@ Item {
   }
 
   function setTolerancePx(value) {
+    if (!settingsLoaded) return
     var next = ClickAbleModel.boundedTolerance(Number(value))
     if (next === tolerancePx) return
     tolerancePx = next
@@ -484,34 +482,42 @@ Item {
     tolerancePx = parsed.tolerancePx
     settingsHydrating = false
     settingsLoaded = true
-    // FileView is asynchronous. If Arm won the race, immediately apply the
+    // Loading is asynchronous. If Arm won the race, immediately apply the
     // loaded values through configure(), which also establishes a fresh
     // movement baseline before any dwell can continue.
     if (helperReady) {
       sendConfiguration()
       sendCommand({ type: "activity", idle: activityMonitor.isIdle })
     }
-    if (parsed.error || parsed.rewrite) scheduleSettingsSave()
+    if ((parsed.error || parsed.rewrite) && settingsPersistenceReady)
+      scheduleSettingsSave()
+  }
+
+  function startSettingsRead() {
+    if (!settingsComponentReady || settingsLoaded || configHome === ""
+        || sourceDir === "" || settingsReadProcess.running
+        || settingsReadStartPending) return
+    settingsReadStartPending = true
+    settingsReadProcess.running = true
   }
 
   function scheduleSettingsSave() {
-    if (!settingsLoaded || settingsHydrating || settingsPath === "") return
+    if (!settingsLoaded || settingsHydrating || !settingsPersistenceReady) return
     settingsDirty = true
-    if (!settingsDirectoryReady) {
-      if (!settingsDirectoryProcess.running && !settingsDirectoryStartPending) {
-        settingsDirectoryStartPending = true
-        settingsDirectoryProcess.running = true
-      }
-      return
-    }
     settingsSaveTimer.restart()
   }
 
   function flushSettings() {
-    if (!settingsDirty || !settingsDirectoryReady || settingsPath === "") return
+    if (!settingsDirty || !settingsPersistenceReady
+        || settingsSaveProcess.running || settingsSaveStartPending) return
     settingsDirty = false
-    settingsFile.setText(ClickAbleModel.settingsJson(dwellMs, tolerancePx))
+    settingsSaveProcess.command = [settingsHelperPath, "write", configHome,
+      ClickAbleModel.settingsJson(dwellMs, tolerancePx)]
+    settingsSaveStartPending = true
+    settingsSaveProcess.running = true
   }
+
+  onSourceDirChanged: Qt.callLater(function() { service.startSettingsRead() })
 
   Connections {
     target: service.lockService
@@ -581,37 +587,72 @@ Item {
     onTriggered: service.flushSettings()
   }
 
-  FileView {
-    id: settingsFile
-    path: service.settingsPath
-    watchChanges: false
-    atomicWrites: true
-    printErrors: false
-    onLoaded: {
-      service.settingsDirectoryReady = true
-      service.loadSettings(text())
+  Process {
+    id: settingsReadProcess
+    command: [service.settingsHelperPath, "read", service.configHome]
+    stdout: StdioCollector {
+      id: settingsReadOutput
+      waitForEnd: true
     }
-    onLoadFailed: service.loadSettings("")
+    onStarted: service.settingsReadStartPending = false
+    onRunningChanged: {
+      if (running || !service.settingsReadStartPending) return
+      service.settingsReadStartPending = false
+      service.settingsPersistenceReady = false
+      service.settingsDirty = false
+      service.loadSettings("")
+      console.warn("clickable: could not start the private settings helper")
+    }
+    onExited: function(exitCode) {
+      service.settingsReadStartPending = false
+      if (exitCode !== 0) {
+        service.settingsPersistenceReady = false
+        service.settingsDirty = false
+        service.loadSettings("")
+        console.warn("clickable: unsafe or unavailable settings were ignored")
+        return
+      }
+      var response = null
+      try {
+        if (settingsReadOutput.text.length <= 8192)
+          response = JSON.parse(settingsReadOutput.text)
+      } catch (_error) {
+      }
+      var responseKeys = response && typeof response === "object"
+        ? Object.keys(response)
+        : []
+      if (!response || Array.isArray(response) || responseKeys.length !== 1
+          || responseKeys[0] !== "text" || typeof response.text !== "string"
+          || response.text.length > 1024) {
+        service.settingsPersistenceReady = false
+        service.settingsDirty = false
+        service.loadSettings("")
+        console.warn("clickable: invalid settings helper response was ignored")
+        return
+      }
+      service.settingsPersistenceReady = true
+      service.loadSettings(response.text)
+    }
   }
 
   Process {
-    id: settingsDirectoryProcess
-    command: ["mkdir", "-m", "700", "-p", "--", service.settingsDirectory]
-    onStarted: service.settingsDirectoryStartPending = false
+    id: settingsSaveProcess
+    onStarted: service.settingsSaveStartPending = false
     onRunningChanged: {
-      if (running || !service.settingsDirectoryStartPending) return
-      service.settingsDirectoryStartPending = false
+      if (running || !service.settingsSaveStartPending) return
+      service.settingsSaveStartPending = false
+      service.settingsPersistenceReady = false
       service.settingsDirty = false
-      console.warn("clickable: could not start private settings directory creation")
+      console.warn("clickable: could not start the private settings helper")
     }
     onExited: function(exitCode) {
-      service.settingsDirectoryStartPending = false
+      service.settingsSaveStartPending = false
       if (exitCode !== 0) {
+        service.settingsPersistenceReady = false
         service.settingsDirty = false
-        console.warn("clickable: could not create private settings directory")
+        console.warn("clickable: settings were not saved because persistence became unsafe")
         return
       }
-      service.settingsDirectoryReady = true
       if (service.settingsDirty) settingsSaveTimer.restart()
     }
   }
@@ -738,13 +779,9 @@ Item {
   Component.onCompleted: {
     // Loading settings never arms input. The helper is launched only by an
     // explicit bar or IPC action.
-    if (settingsPath !== "") {
-      settingsDirectoryStartPending = true
-      settingsDirectoryProcess.running = true
-      Qt.callLater(function() { settingsFile.reload() })
-    } else {
-      settingsLoaded = true
-    }
+    settingsComponentReady = true
+    if (configHome === "") settingsLoaded = true
+    else Qt.callLater(function() { service.startSettingsRead() })
   }
 
   Component.onDestruction: pause("shell_shutdown")

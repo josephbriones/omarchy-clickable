@@ -147,10 +147,40 @@ class ServiceContractTests(unittest.TestCase):
     self.assertNotIn('MouseArea {', SERVICE)
 
   def test_settings_are_private_bounded_and_never_store_armed_state(self):
-    self.assertIn('configHome + "/omarchy/clickable"', SERVICE)
-    self.assertIn('settingsDirectory + "/config.json"', SERVICE)
-    self.assertIn('["mkdir", "-m", "700", "-p", "--", service.settingsDirectory]', SERVICE)
-    self.assertIn('atomicWrites: true', SERVICE)
+    self.assertIn('sourceDir + "/bin/clickable-settings"', SERVICE)
+    self.assertIn('[service.settingsHelperPath, "read", service.configHome]', SERVICE)
+    self.assertIn('[settingsHelperPath, "write", configHome,', SERVICE)
+    self.assertIn('waitForEnd: true', SERVICE)
+    self.assertIn('settingsReadOutput.text.length <= 8192', SERVICE)
+    self.assertIn('responseKeys.length !== 1', SERVICE)
+    self.assertIn('response.text.length > 1024', SERVICE)
+    self.assertIn('property bool settingsPersistenceReady: false', SERVICE)
+    self.assertIn('property bool settingsComponentReady: false', SERVICE)
+    self.assertIn('onSourceDirChanged: Qt.callLater(function() { service.startSettingsRead() })', SERVICE)
+    start_read = self.function_body("startSettingsRead")
+    self.assertIn('!settingsComponentReady', start_read)
+    self.assertIn('sourceDir === ""', start_read)
+    self.assertIn('settingsReadProcess.running = true', start_read)
+    completed = SERVICE.split('Component.onCompleted:', 1)[1]
+    self.assertNotIn('sourceDir === ""', completed)
+    self.assertIn('service.startSettingsRead()', completed)
+    self.assertNotIn('FileView {', SERVICE)
+    self.assertNotIn('["mkdir"', SERVICE)
+    self.assertNotIn('settingsFile.setText', SERVICE)
+    flush = self.function_body("flushSettings")
+    self.assertIn('settingsSaveProcess.running || settingsSaveStartPending', flush)
+    self.assertLess(flush.index('settingsDirty = false'),
+                    flush.index('settingsSaveProcess.running = true'))
+    save_process = SERVICE.split('id: settingsSaveProcess', 1)[1].split(
+      'id: helperProcess', 1)[0]
+    self.assertIn('if (service.settingsDirty) settingsSaveTimer.restart()', save_process)
+    self.assertIn('service.settingsPersistenceReady = false', save_process)
+    self.assertIn('if (!settingsLoaded) return', self.function_body("setDwellMs"))
+    self.assertIn('if (!settingsLoaded) return', self.function_body("setTolerancePx"))
+    self.assertGreaterEqual(
+      BAR.count('enabled: !!(root.clickableService && root.clickableService.settingsLoaded)'),
+      3,
+    )
     settings_json = re.search(r"function settingsJson\(.*?\n\}", MODEL, re.S).group(0)
     self.assertIn('dwellMs:', settings_json)
     self.assertIn('tolerancePx:', settings_json)

@@ -17,6 +17,7 @@ The suite includes:
 - launcher-to-worker parent identity and Linux shell-death cleanup;
 - deterministic demo behavior with no compositor click;
 - strict QML event parsing, legal transitions, de-duplicated focus and lock/activity guards, input-transparent indicators, accessible controls, and IPC contracts;
+- descriptor-safe settings traversal and bounded reads, including symlinked directories/files, FIFOs, wrong file types and owners, oversized input rejected before reading, private-directory enforcement, atomic replacement/rollback, and serialized QML save races;
 - manifest, documentation, executable-mode, privacy, and release metadata checks.
 
 GitHub Actions runs the portable suite on Python 3.12 and 3.14. A separate Arch job checks the official Omarchy validator and `qmllint` against a pinned current Omarchy tree.

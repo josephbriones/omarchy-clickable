@@ -407,6 +407,7 @@ BarWidget {
                 width: Math.max(44, (parent.width - parent.spacing * 3) / 4)
                 text: Math.round(modelData / 100) / 10 + " s"
                 foreground: root.bar ? root.bar.foreground : Color.foreground
+                enabled: !!(root.clickableService && root.clickableService.settingsLoaded)
                 selected: !!(root.clickableService && root.clickableService.dwellMs === modelData)
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: text + " dwell delay"
@@ -446,6 +447,7 @@ BarWidget {
                 width: Math.max(44, (parent.width - parent.spacing * 2) / 3)
                 text: modelData + " px"
                 foreground: root.bar ? root.bar.foreground : Color.foreground
+                enabled: !!(root.clickableService && root.clickableService.settingsLoaded)
                 selected: !!(root.clickableService && root.clickableService.tolerancePx === modelData)
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: modelData + " pixel steadiness radius"

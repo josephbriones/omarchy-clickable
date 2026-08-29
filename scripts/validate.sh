@@ -21,9 +21,10 @@ require_command node
 say "==> Repository and manifest"
 python3 -m json.tool manifest.json >/dev/null
 [[ -x bin/clickable ]] || { say "FAIL: bin/clickable is not executable"; exit 1; }
+[[ -x bin/clickable-settings ]] || { say "FAIL: bin/clickable-settings is not executable"; exit 1; }
 
 say "==> Python syntax and tests"
-python3 -m py_compile lib/clickable.py bin/clickable
+python3 -m py_compile lib/clickable.py lib/clickable_settings.py bin/clickable bin/clickable-settings
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 
 say "==> JavaScript model tests"

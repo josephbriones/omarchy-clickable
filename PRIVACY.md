@@ -17,7 +17,7 @@ The idle signal does not tell ClickAble which key or button was used. ClickAble 
 
 Pointer coordinates, activity, click attempts, and countdown state are never written by ClickAble. They are discarded when paused or stopped.
 
-ClickAble persists only `version`, `dwellMs`, and `tolerancePx` in `$XDG_CONFIG_HOME/omarchy/clickable/config.json`, falling back to `~/.config/omarchy/clickable/config.json` when `XDG_CONFIG_HOME` is unset. It creates the plugin-owned directory with private permissions when needed and writes the file atomically. It never persists the armed state or a one-shot click action. Removing the plugin does not automatically remove this small preference file.
+ClickAble persists only `version`, `dwellMs`, and `tolerancePx` in `$XDG_CONFIG_HOME/omarchy/clickable/config.json`, falling back to `~/.config/omarchy/clickable/config.json` when `XDG_CONFIG_HOME` is unset. A local descriptor-safe helper requires a real user-owned mode-`0700` plugin directory, bounds the file to 1 KiB before reading, and atomically replaces it with a mode-`0600` regular file. Unsafe or unavailable storage is ignored for that shell load and the preferences remain in memory. ClickAble never persists the armed state or a one-shot click action. Removing the plugin does not automatically remove this small preference file.
 
 ClickAble creates no click history, pointer trail, screenshot, recording, analytics record, crash-upload record, or account.
 

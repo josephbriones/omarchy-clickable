@@ -33,6 +33,7 @@ class RepositoryTests(unittest.TestCase):
       ".github/workflows/ci.yml",
       "assets/preview.svg",
       "bin/clickable",
+      "bin/clickable-settings",
       "docs/ARCHITECTURE.md",
       "docs/COMPETITION.md",
       "docs/MARKETPLACE_SUBMISSION.md",
@@ -40,6 +41,7 @@ class RepositoryTests(unittest.TestCase):
       "docs/SETUP.md",
       "docs/TESTING.md",
       "lib/clickable.py",
+      "lib/clickable_settings.py",
       "scripts/acceptance-test.sh",
       "scripts/validate.sh",
       "CHANGELOG.md",
@@ -58,7 +60,7 @@ class RepositoryTests(unittest.TestCase):
     self.assertEqual([path for path in ROOT.rglob("*") if path.is_symlink()], [])
 
   def test_launchers_and_acceptance_runner_are_executable(self):
-    for relative in ("bin/clickable", "scripts/acceptance-test.sh"):
+    for relative in ("bin/clickable", "bin/clickable-settings", "scripts/acceptance-test.sh"):
       self.assertTrue((ROOT / relative).stat().st_mode & stat.S_IXUSR, relative)
 
   def test_readme_has_one_clear_job_install_remove_limits_and_license(self):
@@ -84,11 +86,37 @@ class RepositoryTests(unittest.TestCase):
   def test_implementation_has_no_network_client_shell_or_input_device(self):
     code = "\n".join(
       (ROOT / relative).read_text(encoding="utf-8", errors="replace")
-      for relative in ("bin/clickable", "lib/clickable.py", "Service.qml", "BarWidget.qml")
+      for relative in (
+        "bin/clickable",
+        "bin/clickable-settings",
+        "lib/clickable.py",
+        "lib/clickable_settings.py",
+        "Service.qml",
+        "BarWidget.qml",
+      )
     )
     for forbidden in ("urllib", "requests.", "HTTPConnection", "shell=True", "Qt.openUrlExternally",
                       "/dev/uinput", "ydotool", "sudo", "pkexec"):
       self.assertNotIn(forbidden, code)
+
+  def test_settings_helper_is_descriptor_safe_bounded_and_atomic(self):
+    source = (ROOT / "lib/clickable_settings.py").read_text(encoding="utf-8")
+    for contract in (
+      "MAX_SETTINGS_BYTES = 1024",
+      "os.O_NOFOLLOW",
+      "os.O_NONBLOCK",
+      "follow_symlinks=False",
+      "stat.S_ISREG",
+      "metadata.st_uid != expected_uid",
+      "metadata.st_nlink != 1",
+      "os.replace(",
+      "src_dir_fd=directory_descriptor",
+      "dst_dir_fd=directory_descriptor",
+      "os.fsync(temporary_descriptor)",
+      "os.fchmod(temporary_descriptor, 0o600)",
+      "_sync_directory(directory_descriptor)",
+    ):
+      self.assertIn(contract, source)
 
   def test_preview_is_a_reviewable_1600_by_900_png(self):
     data = (ROOT / "preview.png").read_bytes()

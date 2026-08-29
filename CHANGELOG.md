@@ -6,6 +6,7 @@
 - Added a visible click-through countdown, action-independent bar Pause, and an explicit paused/armed bar state.
 - Added persistent left click plus one-shot right and double click.
 - Added bounded dwell-duration and movement-tolerance preferences.
+- Hardened preference persistence with descriptor-safe no-follow traversal, owned regular-file and 1 KiB pre-read checks, nonblocking reads, serialized saves, and same-directory atomic replacement.
 - Added initial and post-click move-away guards to prevent repeat clicks.
 - Added lock, activity, stable-address scene-change, stale-event, and helper-failure guards.
 - Added keyboard-native popup navigation plus Escape and an accessible Close control.
