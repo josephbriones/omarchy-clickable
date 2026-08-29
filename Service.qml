@@ -69,6 +69,7 @@ Item {
   property string errorMessage: ""
   property string helperDiagnostic: ""
   property bool sceneGuarded: false
+  property string activeWindowAddress: ""
   property bool sessionLocked: !!(lockService && lockService.locked)
 
   readonly property var lockService: shell && shell.firstPartyServiceFor
@@ -434,19 +435,38 @@ Item {
     }
   }
 
+  function hyprlandEventData(event) {
+    var parts
+    try {
+      if (event && event.parse) parts = event.parse(1)
+    } catch (_error) {
+    }
+    if (!parts) parts = String(event && event.data ? event.data : "").split(",")
+    return String(parts[0] || "")
+  }
+
   function sceneChanged(event) {
-    if (!helperReady || !runningRequested) return
     var name = String(event && event.name ? event.name : "")
+    // activewindow carries title text and fires for title-only updates. Its v2
+    // companion carries the stable address needed to distinguish real focus.
+    if (name === "activewindow" || name === "activewindowv2") {
+      var focus = ClickAbleModel.focusEventUpdate(
+        activeWindowAddress, name, hyprlandEventData(event))
+      activeWindowAddress = focus.address
+      if (!focus.changed) return
+    }
+
     var guarded = [
       "workspace", "workspacev2", "focusedmon", "focusedmonv2",
       "moveworkspace", "moveworkspacev2", "activespecial", "activespecialv2",
-      "activewindow", "activewindowv2", "fullscreen", "changefloatingmode",
+      "fullscreen", "changefloatingmode",
       "minimize", "minimized", "pin", "togglegroup", "moveintogroup", "moveoutofgroup",
       "openwindow", "closewindow", "movewindow", "movewindowv2",
       "openlayer", "closelayer", "monitoradded", "monitoraddedv2",
       "monitorremoved", "monitorremovedv2", "configreloaded"
     ]
-    if (guarded.indexOf(name) === -1) return
+    if (name !== "activewindowv2" && guarded.indexOf(name) === -1) return
+    if (!helperReady || !runningRequested) return
 
     progress = 0
     if (!sceneGuarded) {

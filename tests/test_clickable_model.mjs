@@ -41,6 +41,15 @@ test("settings use only backend-supported, paused-safe presets", () => {
   assert.equal("action" in persisted, false)
 })
 
+test("bar emergency pause suppresses the second half of a double click", () => {
+  assert.equal(model.barActivationDecision(true, false), "pause")
+  assert.equal(model.barActivationDecision(true, true), "pause")
+  assert.equal(model.barActivationDecision(false, true), "ignore")
+  assert.equal(model.barActivationDecision(false, false), "open")
+  assert.equal(model.barActivationDecision("false", false), "ignore")
+  assert.equal(model.barActivationDecision(false, null), "ignore")
+})
+
 test("ready accepts only the exact backend capability object and epoch", () => {
   const ready = {
     type: "ready",
@@ -103,4 +112,31 @@ test("indicator routing handles negative-origin multi-monitor layouts", () => {
   assert.equal(model.screenContains(left, 0, 100), false)
   assert.equal(model.screenContains(right, 0, 100), true)
   assert.equal(model.screenContains(right, 2560, 100), false)
+})
+
+test("focus guards follow stable activewindowv2 addresses, not title events", () => {
+  let update = model.focusEventUpdate("aabb", "activewindow", "kitty,build finished")
+  assert.equal(update.address, "aabb")
+  assert.equal(update.changed, false)
+
+  update = model.focusEventUpdate("", "activewindowv2", "AABB")
+  assert.equal(update.address, "aabb")
+  assert.equal(update.changed, true)
+
+  update = model.focusEventUpdate("aabb", "activewindowv2", "AABB")
+  assert.equal(update.address, "aabb")
+  assert.equal(update.changed, false)
+
+  update = model.focusEventUpdate("aabb", "activewindowv2", "ccdd")
+  assert.equal(update.address, "ccdd")
+  assert.equal(update.changed, true)
+
+  update = model.focusEventUpdate("ccdd", "activewindowv2", "not-an-address")
+  assert.equal(update.address, "ccdd")
+  assert.equal(update.changed, true)
+
+  update = model.focusEventUpdate("ccdd", "activewindowv2", "")
+  assert.equal(update.address, "")
+  assert.equal(update.changed, true)
+  assert.equal(model.focusEventUpdate("", "activewindowv2", "").changed, false)
 })

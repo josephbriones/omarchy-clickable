@@ -20,29 +20,42 @@ SPEC.loader.exec_module(clickable)
 
 
 class FakeSocket:
-  def __init__(self, reply=b"ok", *, error=None):
-    self.reply = reply
-    self.error = error
+  def __init__(self, reply=b"ok", *, connect_error=None, send_error=None):
+    self.replies = list(reply) if isinstance(reply, (list, tuple)) else [reply]
+    self.connect_error = connect_error
+    self.send_error = send_error
     self.timeout = None
+    self.timeouts = []
     self.path = None
     self.request = None
     self.closed = False
+    self.recv_calls = 0
 
   def settimeout(self, timeout):
     self.timeout = timeout
+    self.timeouts.append(timeout)
 
   def connect(self, path):
     self.path = path
-    if self.error is not None:
-      raise self.error
+    if self.connect_error is not None:
+      raise self.connect_error
 
   def sendall(self, request):
     self.request = request
+    if self.send_error is not None:
+      raise self.send_error
 
-  def recv(self, _size):
-    if self.error is not None:
-      raise self.error
-    return self.reply
+  def recv(self, size):
+    self.recv_calls += 1
+    if not self.replies:
+      return b""
+    reply = self.replies.pop(0)
+    if isinstance(reply, BaseException):
+      raise reply
+    chunk = reply[:size]
+    if len(reply) > size:
+      self.replies.insert(0, reply[size:])
+    return chunk
 
   def close(self):
     self.closed = True
@@ -141,10 +154,21 @@ class HyprlandIPCTests(unittest.TestCase):
     self.assertFalse(is_locked)
     self.assertEqual(cursor.request, b"j/cursorpos")
     self.assertEqual(locked.request, b"j/locked")
-    self.assertEqual(cursor.timeout, clickable.IPC_TIMEOUT)
-    self.assertEqual(locked.timeout, clickable.IPC_TIMEOUT)
+    self.assertGreater(cursor.timeout, 0)
+    self.assertLessEqual(cursor.timeout, clickable.IPC_TIMEOUT)
+    self.assertGreater(locked.timeout, 0)
+    self.assertLessEqual(locked.timeout, clickable.IPC_TIMEOUT)
     self.assertEqual(constructor.call_args_list[0].args, (socket.AF_UNIX, socket.SOCK_STREAM))
     self.assertTrue(cursor.closed and locked.closed)
+
+  def test_fragmented_stream_response_is_read_through_eof(self):
+    fragmented = FakeSocket([b'{"x":-4', b'0,"y":', b"81}", b""])
+    with mock.patch.object(clickable.socket, "socket", return_value=fragmented):
+      point = self.backend().sample_cursor()
+
+    self.assertEqual(point, clickable.Point(-40, 81))
+    self.assertEqual(fragmented.recv_calls, 4)
+    self.assertTrue(fragmented.closed)
 
   def test_left_and_right_are_exact_targetless_atomic_dispatches(self):
     left = FakeSocket()
@@ -179,19 +203,117 @@ class HyprlandIPCTests(unittest.TestCase):
         self.backend().click("double")
     self.assertEqual(caught.exception.code, "partial_double_click")
 
-  def test_timeout_and_response_size_are_bounded(self):
-    timed_out = FakeSocket(error=socket.timeout())
+  def test_connect_timeout_is_bounded(self):
+    timed_out = FakeSocket(connect_error=socket.timeout())
     with mock.patch.object(clickable.socket, "socket", return_value=timed_out):
       with self.assertRaises(clickable.ClickAbleError) as caught:
         self.backend().sample_cursor()
     self.assertEqual(caught.exception.code, "hyprland_timeout")
+    self.assertTrue(timed_out.closed)
 
-    oversized = FakeSocket(b"x" * (clickable.MAX_IPC_RESPONSE_BYTES + 1))
-    with mock.patch.object(clickable.socket, "socket", return_value=oversized):
+  def test_timeout_before_response_is_bounded(self):
+    timed_out = FakeSocket([socket.timeout()])
+    with mock.patch.object(clickable.socket, "socket", return_value=timed_out):
       with self.assertRaises(clickable.ClickAbleError) as caught:
         self.backend().sample_cursor()
-    self.assertEqual(caught.exception.code, "hyprland_response_too_large")
+    self.assertEqual(caught.exception.code, "hyprland_timeout")
+    self.assertTrue(timed_out.closed)
 
+  def test_timeout_after_partial_response_is_rejected(self):
+    timed_out = FakeSocket([b'{"locked":', socket.timeout()])
+    with mock.patch.object(clickable.socket, "socket", return_value=timed_out):
+      with self.assertRaises(clickable.ClickAbleError) as caught:
+        self.backend().is_locked()
+    self.assertEqual(caught.exception.code, "hyprland_timeout")
+    self.assertTrue(timed_out.closed)
+
+  def test_fragment_trickle_cannot_extend_the_absolute_deadline(self):
+    now = [100.0]
+
+    class TrickleSocket(FakeSocket):
+      def recv(self, size):
+        now[0] += 0.2
+        return super().recv(size)
+
+    trickle = TrickleSocket([b"x"] * 20)
+    backend = clickable.HyprlandIPC(
+      Path("/run/user/1000/hypr/test/.socket.sock"),
+      timeout=0.5,
+    )
+    with (
+      mock.patch.object(clickable.socket, "socket", return_value=trickle),
+      mock.patch.object(clickable.time, "monotonic", side_effect=lambda: now[0]),
+    ):
+      with self.assertRaises(clickable.ClickAbleError) as caught:
+        backend.request("j/cursorpos")
+
+    self.assertEqual(caught.exception.code, "hyprland_timeout")
+    self.assertEqual(trickle.recv_calls, 3)
+    self.assertGreater(trickle.timeouts[0], trickle.timeouts[-1])
+    self.assertTrue(trickle.closed)
+
+  def test_cancellation_interrupts_a_fragmented_response(self):
+    cancelled = [False]
+
+    class CancellingSocket(FakeSocket):
+      def recv(self, size):
+        chunk = super().recv(size)
+        cancelled[0] = True
+        return chunk
+
+    fragmented = CancellingSocket([b'{"locked":', b"false}"])
+    backend = clickable.HyprlandIPC(
+      Path("/run/user/1000/hypr/test/.socket.sock"),
+      stop_requested=lambda: cancelled[0],
+    )
+    with mock.patch.object(clickable.socket, "socket", return_value=fragmented):
+      with self.assertRaises(clickable.Cancelled):
+        backend.request("j/locked")
+
+    self.assertEqual(fragmented.recv_calls, 1)
+    self.assertTrue(fragmented.closed)
+
+  def test_fragmented_oversized_response_is_rejected_at_the_limit(self):
+    oversized = FakeSocket([
+      b"x" * (clickable.MAX_IPC_RESPONSE_BYTES - 3),
+      b"yyyy",
+    ])
+    with mock.patch.object(clickable.socket, "socket", return_value=oversized):
+      with self.assertRaises(clickable.ClickAbleError) as caught:
+        self.backend().request("j/cursorpos")
+    self.assertEqual(caught.exception.code, "hyprland_response_too_large")
+    self.assertTrue(oversized.closed)
+
+  def test_exact_response_limit_is_accepted_through_eof(self):
+    exact = FakeSocket([b"x" * clickable.MAX_IPC_RESPONSE_BYTES, b""])
+    with mock.patch.object(clickable.socket, "socket", return_value=exact):
+      response = self.backend().request("j/cursorpos")
+    self.assertEqual(len(response), clickable.MAX_IPC_RESPONSE_BYTES)
+    self.assertTrue(exact.closed)
+
+  def test_socket_creation_failure_has_a_stable_error(self):
+    with mock.patch.object(clickable.socket, "socket", side_effect=OSError("unavailable")):
+      with self.assertRaises(clickable.ClickAbleError) as caught:
+        self.backend().request("j/cursorpos")
+    self.assertEqual(caught.exception.code, "hyprland_unavailable")
+
+  def test_send_failure_has_a_stable_error(self):
+    failed = FakeSocket(send_error=BrokenPipeError("closed"))
+    with mock.patch.object(clickable.socket, "socket", return_value=failed):
+      with self.assertRaises(clickable.ClickAbleError) as caught:
+        self.backend().request("j/cursorpos")
+    self.assertEqual(caught.exception.code, "hyprland_unavailable")
+    self.assertTrue(failed.closed)
+
+  def test_empty_eof_has_a_stable_error(self):
+    empty = FakeSocket(b"")
+    with mock.patch.object(clickable.socket, "socket", return_value=empty):
+      with self.assertRaises(clickable.ClickAbleError) as caught:
+        self.backend().request("j/cursorpos")
+    self.assertEqual(caught.exception.code, "hyprland_unavailable")
+    self.assertTrue(empty.closed)
+
+  def test_request_size_is_bounded_before_opening_socket(self):
     with mock.patch.object(clickable.socket, "socket") as constructor:
       with self.assertRaises(ValueError):
         self.backend().request("x" * (clickable.MAX_IPC_REQUEST_BYTES + 1))

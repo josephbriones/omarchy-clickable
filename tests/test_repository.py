@@ -135,6 +135,17 @@ class RepositoryTests(unittest.TestCase):
       'state.get("running") is False',
       "Did exactly one %s action reach the item under the pointer?",
       "complete the remaining surface, display, lock, reload, stress, and Orca gates",
+      "omarchy-version",
+      "pacman -Q hyprland",
+      "hyprctl version",
+      'installed_root="$HOME/.config/omarchy/plugins/$plugin_id"',
+      'candidate_sha=$(git -C "$ROOT" rev-parse --verify HEAD',
+      'installed_sha=$(git -C "$installed_root" rev-parse --verify HEAD',
+      'if [[ $candidate_sha != "$installed_sha" ]]',
+      'status --porcelain --untracked-files=all',
+      "omarchy-shell shell rescanPlugins",
+      'ClickAble commit: %s',
+      'if ! omarchy_release=$(omarchy-version 2>&1)',
     ):
       self.assertIn(contract, source)
 
@@ -143,6 +154,34 @@ class RepositoryTests(unittest.TestCase):
     self.assertNotIn("- [x]", checklist.lower())
     for gate in ("XWayland", "Orca", "1,000", "lock", "reload"):
       self.assertIn(gate, checklist)
+
+  def test_release_docs_preserve_candidate_status_and_lock_race(self):
+    release_surfaces = (
+      "README.md",
+      "SECURITY.md",
+      "docs/ARCHITECTURE.md",
+      "docs/TESTING.md",
+      "docs/RELEASE_CHECKLIST.md",
+      "docs/COMPETITION.md",
+      "CHANGELOG.md",
+    )
+    for relative in release_surfaces:
+      with self.subTest(relative=relative):
+        source = (ROOT / relative).read_text(encoding="utf-8").lower()
+        self.assertIn("release candidate", source)
+        self.assertIn("residual", source)
+        self.assertIn("exact recorded", source)
+
+    for relative in ("README.md", "SECURITY.md", "docs/ARCHITECTURE.md"):
+      with self.subTest(preflight=relative):
+        source = (ROOT / relative).read_text(encoding="utf-8").lower()
+        self.assertIn("best-effort immediate preflight", source)
+
+    for relative in (".github/PULL_REQUEST_TEMPLATE.md", "docs/MARKETPLACE_SUBMISSION.md"):
+      with self.subTest(residual_surface=relative):
+        source = (ROOT / relative).read_text(encoding="utf-8").lower()
+        self.assertIn("observed lock", source)
+        self.assertIn("residual", source)
 
 
 if __name__ == "__main__":

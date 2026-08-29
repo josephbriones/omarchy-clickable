@@ -164,24 +164,50 @@ class HyprlandIPC:
     if not payload or len(payload) > MAX_IPC_REQUEST_BYTES or b"\x00" in payload:
       raise ValueError("invalid Hyprland request")
 
-    connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    connection.settimeout(self.timeout)
+    deadline = time.monotonic() + self.timeout
+
+    def remaining_timeout():
+      if self.stop_requested():
+        raise Cancelled()
+      remaining = deadline - time.monotonic()
+      if remaining <= 0:
+        raise socket.timeout("Hyprland request deadline expired")
+      return remaining
+
+    connection = None
     try:
+      connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+      connection.settimeout(remaining_timeout())
       connection.connect(os.fspath(self.socket_path))
+      connection.settimeout(remaining_timeout())
       connection.sendall(payload)
-      response = connection.recv(MAX_IPC_RESPONSE_BYTES + 1)
+      response = bytearray()
+      while True:
+        connection.settimeout(remaining_timeout())
+        chunk = connection.recv(min(4096, MAX_IPC_RESPONSE_BYTES + 1 - len(response)))
+        if self.stop_requested():
+          raise Cancelled()
+        if time.monotonic() > deadline:
+          raise socket.timeout("Hyprland request deadline expired")
+        if not chunk:
+          break
+        response.extend(chunk)
+        if len(response) > MAX_IPC_RESPONSE_BYTES:
+          raise ClickAbleError(
+            "hyprland_response_too_large",
+            "Hyprland returned more data than ClickAble accepts.",
+          )
     except socket.timeout as error:
       raise ClickAbleError("hyprland_timeout", "Hyprland did not answer ClickAble in time.") from error
     except (ConnectionError, FileNotFoundError, OSError) as error:
       raise ClickAbleError("hyprland_unavailable", "ClickAble could not reach this Hyprland session.") from error
     finally:
-      connection.close()
+      if connection is not None:
+        connection.close()
 
-    if len(response) > MAX_IPC_RESPONSE_BYTES:
-      raise ClickAbleError("hyprland_response_too_large", "Hyprland returned more data than ClickAble accepts.")
     if not response:
       raise ClickAbleError("hyprland_unavailable", "Hyprland closed the request without answering.")
-    return response
+    return bytes(response)
 
   def sample_cursor(self):
     return parse_cursor_response(self.request("j/cursorpos"))

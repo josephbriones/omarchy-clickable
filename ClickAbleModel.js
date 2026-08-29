@@ -86,6 +86,31 @@ function boundedTolerance(value) {
   return isInteger(value) && inList(value, TOLERANCE_CHOICES) ? value : DEFAULT_TOLERANCE_PX
 }
 
+function barActivationDecision(runningRequested, suppressionActive) {
+  if (typeof runningRequested !== "boolean" || typeof suppressionActive !== "boolean")
+    return "ignore"
+  if (runningRequested) return "pause"
+  if (suppressionActive) return "ignore"
+  return "open"
+}
+
+function normalizedWindowAddress(value) {
+  var address = typeof value === "string" ? value.trim() : ""
+  return /^[0-9a-fA-F]{1,32}$/.test(address) ? address.toLowerCase() : ""
+}
+
+function focusEventUpdate(currentAddress, eventName, eventData) {
+  var current = normalizedWindowAddress(currentAddress)
+  if (String(eventName || "") !== "activewindowv2") {
+    return { address: current, changed: false }
+  }
+
+  var raw = typeof eventData === "string" ? eventData.trim() : ""
+  var next = normalizedWindowAddress(raw)
+  if (raw !== "" && next === "") return { address: current, changed: true }
+  return { address: next, changed: next !== current }
+}
+
 function parseSettings(raw) {
   if (typeof raw !== "string" || raw.trim() === "") {
     return {

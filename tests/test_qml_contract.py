@@ -108,7 +108,7 @@ class ServiceContractTests(unittest.TestCase):
     self.assertNotIn('pendingAction = ""', clicked)
 
   def test_guards_cancel_scene_lock_and_helper_failures(self):
-    for event in ("workspace", "activewindow", "openwindow", "closewindow", "openlayer",
+    for event in ("workspace", "openwindow", "closewindow", "openlayer",
                   "fullscreen", "changefloatingmode", "minimize", "minimized", "pin",
                   "moveworkspace", "activespecial", "configreloaded"):
       self.assertIn(f'"{event}"', SERVICE)
@@ -116,6 +116,22 @@ class ServiceContractTests(unittest.TestCase):
     self.assertIn('name: "scene_change"', SERVICE)
     self.assertIn('helper_unresponsive', SERVICE)
     self.assertIn('helper_exited', SERVICE)
+
+  def test_focus_guard_deduplicates_addresses_and_ignores_title_events(self):
+    scene = self.function_body("sceneChanged")
+    self.assertIn('name === "activewindow" || name === "activewindowv2"', scene)
+    self.assertIn('ClickAbleModel.focusEventUpdate(', scene)
+    self.assertIn('activeWindowAddress = focus.address', scene)
+    self.assertIn('if (!focus.changed) return', scene)
+    guarded = scene.split("var guarded = [", 1)[1].split("]", 1)[0]
+    self.assertNotIn('"activewindow"', guarded)
+    self.assertNotIn('"activewindowv2"', guarded)
+    self.assertIn('name !== "activewindowv2"', scene)
+    self.assertLess(scene.index('activeWindowAddress = focus.address'),
+                    scene.index('if (!helperReady || !runningRequested) return'))
+    scene_timer = SERVICE.split("id: sceneGuardTimer", 1)[1].split("Process {", 1)[0]
+    self.assertIn('name: "scene_change", blocked: false', scene_timer)
+    self.assertIn('idle: activityMonitor.isIdle', scene_timer)
 
   def test_watchdog_exceeds_the_bounded_double_click_commit(self):
     self.assertIn('interval: Math.max(3000, service.pollMs * 8)', SERVICE)
@@ -160,19 +176,37 @@ class ServiceContractTests(unittest.TestCase):
 
 class BarContractTests(unittest.TestCase):
   def test_paused_bar_click_opens_controls_and_armed_click_pauses(self):
-    self.assertIn('if (root.clickableService.runningRequested)', BAR)
-    self.assertIn('root.clickableService.pause("bar")', BAR)
-    self.assertIn('root.togglePopup()', BAR)
+    pressed = re.search(r"    onPressed: function\(button\) \{(.*?)\n    \}", BAR, re.S)
+    self.assertIsNotNone(pressed)
+    body = pressed.group(1)
+    self.assertNotIn('button === Qt.RightButton', body)
+    self.assertNotIn('displayAction', body)
+    self.assertIn('ClickAbleModel.barActivationDecision(', body)
+    self.assertLess(body.index('if (decision === "ignore") return'),
+                    body.index('if (decision === "pause")'))
+    self.assertLess(body.index('root.triggerActivationSuppressed = true'),
+                    body.index('root.clickableService.pause("bar")'))
+    self.assertLess(body.index('triggerSuppressionTimer.restart()'),
+                    body.index('root.clickableService.pause("bar")'))
+    self.assertLess(body.index('root.clickableService.pause("bar")'),
+                    body.index('root.close()'))
+    armed_return = body.index('return', body.index('root.close()'))
+    self.assertLess(body.index('root.close()'), armed_return)
+    self.assertLess(armed_return, body.index('root.togglePopup()'))
     self.assertNotIn('onPressed: root.clickableService.start()', BAR)
+    timer = BAR.split('id: triggerSuppressionTimer', 1)[1].split('KeyboardPanel {', 1)[0]
+    self.assertIn('interval: 1250', timer)
+    self.assertIn('onTriggered: root.triggerActivationSuppressed = false', timer)
 
   def test_arm_and_pause_release_popup_grab_immediately(self):
     primary = BAR.split("id: primaryAction", 1)[1].split("PanelSeparator", 1)[0]
     self.assertIn('root.clickableService.start()', primary)
     self.assertIn('if (root.clickableService.runningRequested) root.close()', primary)
-    self.assertIn('root.clickableService.pause("bar")\n            root.close()', primary)
+    self.assertRegex(primary, r'root\.clickableService\.pause\("bar"\)\n\s+root\.close\(\)')
 
   def test_controls_are_large_keyboard_visible_and_screen_reader_named(self):
     self.assertIn('(44 - fontSize) / 2', BAR)
+    self.assertGreaterEqual(BAR.count('width: Math.max(44,'), 5)
     self.assertIn('focusable: true', BAR)
     self.assertIn('visible: trigger.activeFocus', BAR)
     self.assertIn('Accessible.onPressAction', BAR)
@@ -184,13 +218,26 @@ class BarContractTests(unittest.TestCase):
 
   def test_popup_is_bounded_scrollable_and_focus_reveals_controls(self):
     self.assertIn('KeyboardPanel {', BAR)
-    self.assertIn('focusTarget: primaryAction', BAR)
+    self.assertIn('focusTarget: keyCatcher', BAR)
+    self.assertIn('Qt.callLater(function() { primaryAction.forceActiveFocus() })', BAR)
     self.assertNotIn('PopupCard {', BAR)
     self.assertIn('contentHeight: popup.fittedContentHeight(content.implicitHeight)', BAR)
     self.assertIn('Flickable {', BAR)
     self.assertIn('clip: true', BAR)
     self.assertIn('function revealControl(item)', BAR)
     self.assertIn('onActiveFocusChanged: if (activeFocus) root.revealControl(this)', BAR)
+
+  def test_popup_has_canonical_keyboard_dismissal_and_explicit_close(self):
+    self.assertIn('PanelKeyCatcher {', BAR)
+    self.assertIn('onCloseRequested: root.close()', BAR)
+    self.assertIn('onTabRequested: function(direction) { root.moveFocus(direction) }', BAR)
+    self.assertIn('onMoveRequested: function(dx, dy)', BAR)
+    self.assertIn('onActivateRequested: root.activateFocusedControl()', BAR)
+    self.assertIn('if (primaryAction.visible && primaryAction.enabled) primaryAction.clicked()', BAR)
+    close = BAR.split("id: closeAction", 1)[1].split("Text {", 1)[0]
+    self.assertIn('text: "Close controls"', close)
+    self.assertIn('Accessible.description:', close)
+    self.assertIn('onClicked: root.close()', close)
 
   def test_right_and_double_are_truthful_one_shot_controls(self):
     self.assertIn('text: "Right once"', BAR)
