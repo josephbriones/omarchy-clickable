@@ -6,6 +6,7 @@ ClickAble keeps the shell policy, local input primitive, and process lifetime se
 Omarchy service
   ├─ IdleMonitor + lock/scene guards
   ├─ bar control + click-through ring windows
+  ├─ QML Process: bin/clickable-settings (bounded persistence)
   └─ QML Process: bin/clickable (launcher)
        └─ Python worker
             ├─ strict epoch-tagged JSONL state machine
@@ -76,3 +77,7 @@ The service creates one overlay instance per `Quickshell.screens` output. Each w
 ## Persistence
 
 Only `version`, `dwellMs`, and `tolerancePx` persist at `$XDG_CONFIG_HOME/omarchy/clickable/config.json`, with the normal `~/.config` fallback. Armed state, action mode, epoch, pointer coordinates, guards, counters, diagnostics, and countdown progress are session-only.
+
+QML never opens or creates the settings pathname. It invokes `bin/clickable-settings` with a direct argument vector and consumes its bounded result. The stdlib-only helper walks path components with directory descriptors and `O_NOFOLLOW`, requires the final directory to be real, owned by the effective user, and exactly mode `0700`, then verifies an existing destination without following it. Only an owned regular file of at most 1 KiB is opened, using `O_NONBLOCK`; the read loop remains independently capped if the file changes after inspection.
+
+Saving is serialized in QML: one helper process owns one immutable JSON snapshot, while changes arriving during that write remain dirty and schedule the next snapshot after exit. The helper validates the exact settings schema, writes a mode-`0600` temporary file in the already-open directory, syncs it, atomically replaces `config.json` relative to that same descriptor, and syncs the directory. Any unsafe object or helper failure disables persistence for that shell load; safe in-memory defaults remain available, and loading never arms clicking.
